@@ -16,5 +16,7 @@ XB-Ruby-Versions: ${ruby:Versions}
 Depends: ${shlibs:Depends}, ${misc:Depends}, ruby | ruby-interpreter, rake, ruby-rspec, lsb-release
 # bundler (~> 1.3, development)
 Description: Common layer for serverspec and configspec
- Common layer for serverspec and configspec
+ This package is backend library for ruby-serverspec, which was
+ extracted from serverspec for further abstracction, intended to
+ be used by another configuration management tools.
 
