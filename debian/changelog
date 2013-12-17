@@ -1,0 +1,5 @@
+ruby-specinfra (0.0.15-1) unstable; urgency=medium
+
+  * Initial release (Closes: #732350)
+
+ -- KURASHIKI Satoru <lurdan@gmail.com>  Tue, 17 Dec 2013 12:49:51 +0900
