@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Ruby Extras Maintainers <pkg-ruby-extras-maintainers@lists.alioth.debian.org>
 Uploaders: KURASHIKI Satoru <lurdan@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~), gem2deb (>= 0.6.1~), rake, ruby-rspec, lsb-release
-Standards-Version: 3.9.4
+Standards-Version: 3.9.5
 Vcs-Git: https://github.com/lurdan/serverspec.git
 Vcs-Browser: https://github.com/lurdan/specinfra/tree/dpkg
 Homepage: http://github.com/serverspec/specinfra/

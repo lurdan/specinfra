@@ -1,4 +1,4 @@
-ruby-specinfra (0.0.15-1) unstable; urgency=medium
+ruby-specinfra (0.0.16-1) unstable; urgency=medium
 
   * Initial release (Closes: #732350)
 
