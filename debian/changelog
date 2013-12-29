@@ -1,8 +1,8 @@
-ruby-specinfra (0.1.0-1) unstable; urgency=low
+ruby-specinfra (0.1.1-1) unstable; urgency=low
 
   * New upstream release.
 
- -- KURASHIKI Satoru <lurdan@gmail.com>  Sat, 28 Dec 2013 13:50:29 +0900
+ -- KURASHIKI Satoru <lurdan@gmail.com>  Sun, 29 Dec 2013 13:50:29 +0900
 
 ruby-specinfra (0.0.16-1) unstable; urgency=medium
 
