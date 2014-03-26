@@ -1,7 +1,22 @@
 function FindInstalledApplication
 {
   param($appName, $appVersion)
-  $selectionCriteria = "(Name like '$appName' or PackageName like '$appName') and InstallState = 5"
-  if ($appVersion -ne $null) { $selectionCriteria += " and version = '$appVersion'"}
-  Get-WmiObject Win32_Product -filter $selectionCriteria
+    
+  if ((Get-WmiObject win32_operatingsystem).OSArchitecture -notlike '64-bit')  
+  { 
+      $keys= (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*') 
+  }  
+    else  
+  { 
+      $keys = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*') 
+  }   
+
+  if ($appVersion -eq $null) { 
+    @($keys | Where-Object {$_.DisplayName -like $appName -or $_.PSChildName -like $appName}).Length -gt 0
+  }
+  else{
+    @($keys | Where-Object {$_.DisplayName -like $appName -or $_.PSChildName -like $appName  } | Where-Object {$_.DisplayVersion -eq $appVersion} ).Length -gt 0
+  }
+
 }
+

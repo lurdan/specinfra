@@ -15,7 +15,7 @@ module SpecInfra
           @example.metadata[:stdout]  = ret[:stdout]
         end
 
-        ret
+        CommandResult.new ret
       end
 
       def build_command(cmd)
@@ -41,6 +41,16 @@ module SpecInfra
         cmd
       end
 
+      def copy_file(from, to)
+        scp = SpecInfra.configuration.scp
+        begin
+          scp.upload!(from, to)
+        rescue => e
+          return false
+        end
+        true
+      end
+
       private
       def ssh_exec!(command)
         stdout_data = ''
@@ -51,14 +61,16 @@ module SpecInfra
 
         ssh = SpecInfra.configuration.ssh
         ssh.open_channel do |channel|
-          channel.request_pty do |ch, success|
-            abort "Could not obtain pty " if !success
+          if not SpecInfra.configuration.sudo_password.nil?
+            # We don't need a PTY because we don't have a sudo password
+            channel.request_pty do |ch, success|
+              abort "Could not obtain pty " if !success
+            end
           end
           channel.exec("#{command}") do |ch, success|
             abort "FAILED: couldn't execute command (ssh.channel.exec)" if !success
             channel.on_data do |ch, data|
               if data.match pass_prompt
-                abort "Please set sudo password by using SUDO_PASSWORD or ASK_SUDO_PASSWORD environment variable" if SpecInfra.configuration.sudo_password.nil?
                 channel.send_data "#{SpecInfra.configuration.sudo_password}\n"
               else
                 stdout_data += data
@@ -66,7 +78,11 @@ module SpecInfra
             end
 
             channel.on_extended_data do |ch, type, data|
-              stderr_data += data
+              if data.match /^sudo: no tty present and no askpass program specified/
+                abort "Please set sudo password by using SUDO_PASSWORD or ASK_SUDO_PASSWORD environment variable"
+              else
+                stderr_data += data
+              end
             end
 
             channel.on_request("exit-status") do |ch, data|
@@ -84,13 +100,16 @@ module SpecInfra
 
       def sudo
         sudo_path = SpecInfra.configuration.sudo_path
-        if sudo_path
-          "#{sudo_path}/sudo"
-        else
-          'sudo'
-        end
-      end
+        sudo_path += '/' if sudo_path
 
+        sudo_options = SpecInfra.configuration.sudo_options
+        if sudo_options
+          sudo_options = sudo_options.join(' ') if sudo_options.is_a?(Array)
+          sudo_options = ' ' + sudo_options
+        end
+
+        "#{sudo_path}sudo#{sudo_options}"
+      end
     end
   end
 end

@@ -1,3 +1,3 @@
-module Specinfra
-  VERSION = "0.1.1"
+module SpecInfra
+  VERSION = "0.8.0"
 end

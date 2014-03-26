@@ -43,7 +43,7 @@ module SpecInfra
           exec cmd
         end
       end
-      
+
       def check_directory(dir)
         cmd = item_has_attribute dir, 'Directory'
         Backend::PowerShell::Command.new do
@@ -102,7 +102,21 @@ module SpecInfra
         version_selection = version.nil? ? "" : "-appVersion '#{version}'"
         Backend::PowerShell::Command.new do
           using 'find_installed_application.ps1'
-          exec "(FindInstalledApplication -appName '#{package}' #{version_selection}) -ne $null"
+          exec "(FindInstalledApplication -appName '#{package}' #{version_selection}) -eq $true"
+        end
+      end
+
+      def check_service_installed(service)
+        Backend::PowerShell::Command.new do
+          using 'find_service.ps1'
+          exec "@(FindService -name '#{service}').count -gt 0"
+        end
+      end
+
+      def check_service_start_mode(service, mode)
+        Backend::PowerShell::Command.new do
+          using 'find_service.ps1'
+          exec  "'#{mode}' -match (FindService -name '#{service}').StartMode -and (FindService -name '#{service}') -ne $null"
         end
       end
 
@@ -181,6 +195,96 @@ module SpecInfra
         Backend::PowerShell::Command.new { exec cmd }
       end
 
+      def check_resolvable(name, type)
+        if type == "hosts"
+            cmd = "@(Select-String -path (Join-Path -Path $($env:windir) -ChildPath 'system32/drivers/etc/hosts') -pattern '#{name}\\b').count -gt 0"
+        else
+            cmd = "@([System.Net.Dns]::GetHostAddresses('#{name}')).count -gt 0"
+        end
+        Backend::PowerShell::Command.new { exec cmd }
+      end
+
+      def check_reachable(host, port, proto, timeout)
+          if port.nil?
+             Backend::PowerShell::Command.new do
+              exec "(New-Object System.Net.NetworkInformation.Ping).send('#{host}').Status -eq 'Success'"
+             end
+          else
+            Backend::PowerShell::Command.new do
+             using 'is_remote_port_listening.ps1'
+             exec"(IsRemotePortListening -hostname #{host} -port #{port} -timeout #{timeout} -proto #{proto}) -eq $true"
+            end
+          end
+      end
+
+      def check_windows_feature_enabled(name,provider)
+
+        if provider.nil?
+          cmd =  "@(ListWindowsFeatures -feature #{name}).count -gt 0"
+        else
+          cmd =  "@(ListWindowsFeatures -feature #{name} -provider #{provider}).count -gt 0"
+        end
+
+        Backend::PowerShell::Command.new do
+          using 'list_windows_features.ps1'
+          exec cmd
+        end
+       end
+
+       def check_file_version(name,version)
+          cmd = "((Get-Command '#{name}').FileVersionInfo.ProductVersion -eq '#{version}') -or ((Get-Command '#{name}').FileVersionInfo.FileVersion -eq '#{version}')"
+          Backend::PowerShell::Command.new { exec cmd }
+       end
+
+       def check_iis_website_enabled(name)
+          Backend::PowerShell::Command.new do
+            using 'find_iis_component.ps1'
+            exec "(FindIISWebsite -name '#{name}').serverAutoStart -eq $true"
+          end
+       end
+
+       def check_iis_website_installed(name)
+          Backend::PowerShell::Command.new do
+            using 'find_iis_component.ps1'
+            exec "@(FindIISWebsite -name '#{name}').count -gt 0"
+          end
+       end
+
+       def check_iis_website_running(name)
+          Backend::PowerShell::Command.new do
+            using 'find_iis_component.ps1'
+            exec "(FindIISWebsite -name '#{name}').state -eq 'Started'"
+          end
+       end
+
+       def check_iis_website_app_pool(name, app_pool)
+        Backend::PowerShell::Command.new do
+              using 'find_iis_component.ps1'
+              exec "(FindIISWebsite -name '#{name}').applicationPool -match '#{app_pool}'"
+            end
+        end
+
+        def check_iis_website_path(name, path)
+            Backend::PowerShell::Command.new do
+              using 'find_iis_component.ps1'
+              exec "[System.Environment]::ExpandEnvironmentVariables( ( FindIISWebsite -name '#{name}' ).physicalPath ).replace('\\', '/' ) -eq ('#{path}'.trimEnd('/').replace('\\', '/'))"
+            end
+        end
+
+        def check_iis_app_pool(name)
+            Backend::PowerShell::Command.new do
+              using 'find_iis_component.ps1'
+              exec "@(FindIISAppPool -name '#{name}').count -gt 0"
+            end
+        end
+
+        def check_iis_app_pool_dotnet(name, dotnet)
+            Backend::PowerShell::Command.new do
+              using 'find_iis_component.ps1'
+              exec "(FindIISAppPool -name '#{name}').managedRuntimeVersion -match 'v#{dotnet}'"
+            end
+        end
+
       private
 
       def item_has_attribute item, attribute
@@ -193,7 +297,7 @@ module SpecInfra
           byte_array = [property[:value]].pack('H*').bytes.to_a
           "([byte[]] #{byte_array.join(',')})"
         when :type_dword
-          [property[:value].scan(/[0-9a-f]{2}/i).reverse.join].pack("H*").unpack("l").first
+          [property[:value].rjust(8, '0').scan(/[0-9a-f]{2}/i).reverse.join].pack("H*").unpack("l").first
         when :type_qword
           property[:value].hex
         else

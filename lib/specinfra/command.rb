@@ -7,6 +7,7 @@ require "specinfra/command/ubuntu"
 require "specinfra/command/gentoo"
 require "specinfra/command/plamo"
 require "specinfra/command/redhat"
+require "specinfra/command/suse"
 
 # Solaris
 require "specinfra/command/solaris"
@@ -18,5 +19,5 @@ require "specinfra/command/smartos"
 require "specinfra/command/aix"
 require "specinfra/command/darwin"
 require "specinfra/command/freebsd"
+require "specinfra/command/freebsd10"
 require "specinfra/command/windows"
-

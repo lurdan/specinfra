@@ -11,6 +11,9 @@ module SpecInfra
         cmd += " -S"
         cmd += " #{escape(chain)}" if chain
         cmd += " | grep -- #{escape(rule)}"
+        cmd += " || iptables-save"
+        cmd += " -t #{escape(table)}" if table
+        cmd += " | grep -- #{escape(rule)}"
         cmd
       end
 
@@ -41,7 +44,7 @@ module SpecInfra
         ip_address.gsub!(".", "\\.")
         "ip addr show #{interface} | grep 'inet #{ip_address}'"
       end
-      
+
       def check_zfs(zfs, property=nil)
         if property.nil?
           "zfs list -H #{escape(zfs)}"

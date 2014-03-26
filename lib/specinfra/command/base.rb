@@ -79,6 +79,14 @@ module SpecInfra
         raise NotImplementedError.new
       end
 
+      def check_service_installed(service)
+        raise NotImplementedError.new
+      end
+
+      def check_service_start_mode(service, mode)
+        raise NotImplementedError.new
+      end
+
       def check_listening(port)
         regexp = ":#{port} "
         "netstat -tunl | grep -- #{escape(regexp)}"
@@ -129,6 +137,11 @@ module SpecInfra
         "grep -qF -- #{escape(expected_pattern)} #{escape(file)}"
       end
 
+      def check_file_checksum(file, expected)
+        regexp = "^#{expected}"
+        "cksum #{escape(file)} | grep -iw -- #{escape(regexp)}"
+      end
+
       def check_file_md5checksum(file, expected)
         regexp = "^#{expected}"
         "md5sum #{escape(file)} | grep -iw -- #{escape(regexp)}"
@@ -173,7 +186,7 @@ module SpecInfra
       end
 
       def check_link(link, target)
-        "stat -c %N #{escape(link)} | grep -- #{escape(target)}"
+        "stat -c %N #{escape(link)} | egrep -e \"-> .#{escape(target)}.\""
       end
 
       def check_installed_by_gem(name, version=nil)
