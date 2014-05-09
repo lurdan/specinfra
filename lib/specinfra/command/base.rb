@@ -39,7 +39,7 @@ module SpecInfra
 
       def check_reachable(host, port, proto, timeout)
         if port.nil?
-          "ping -n #{escape(host)} -w #{escape(timeout)} -c 2"
+          "ping -w #{escape(timeout)} -c 2 -n #{escape(host)}"
         else
           "nc -vvvvz#{escape(proto[0].chr)} #{escape(host)} #{escape(port)} -w #{escape(timeout)}"
         end
@@ -161,6 +161,17 @@ module SpecInfra
         "#{sed} | #{checker_with_regexp} || #{sed} | #{checker_with_fixed}"
       end
 
+      def check_file_contain_lines(file, expected_lines, from=nil, to=nil)
+        require 'digest/md5'
+        from ||= '1'
+        to ||= '$'
+        sed = "sed -n #{escape(from)},#{escape(to)}p #{escape(file)}"
+        head_line = expected_lines.first.chomp
+        lines_checksum = Digest::MD5.hexdigest(expected_lines.map(&:chomp).join("\n") + "\n")
+        afterwards_length = expected_lines.length - 1
+        "#{sed} | grep -A #{escape(afterwards_length)} -F -- #{escape(head_line)} | md5sum | grep -qiw -- #{escape(lines_checksum)}"
+      end
+
       def check_mode(file, mode)
         regexp = "^#{mode}$"
         "stat -c %a #{escape(file)} | grep -- #{escape(regexp)}"
@@ -179,9 +190,9 @@ module SpecInfra
       def check_cron_entry(user, entry)
         entry_escaped = entry.gsub(/\*/, '\\*')
         if user.nil?
-          "crontab -l | grep -- #{escape(entry_escaped)}"
+          "crontab -l | grep -v \"#\" -- | grep -- #{escape(entry_escaped)}"
         else
-          "crontab -u #{escape(user)} -l | grep -- #{escape(entry_escaped)}"
+          "crontab -u #{escape(user)} -l | grep -v \"#\" | grep -- #{escape(entry_escaped)}"
         end
       end
 
@@ -320,6 +331,10 @@ module SpecInfra
 
       def get_package_version(package, opts=nil)
         raise NotImplementedError.new
+      end
+
+      def get_ipaddress_of_host(name)
+        "getent hosts #{escape(name)} | awk '{print $1}'"
       end
     end
   end

@@ -181,12 +181,24 @@ module SpecInfra
 
       def check_os
         return SpecInfra.configuration.os if SpecInfra.configuration.os
-        if run_command('ls /etc/redhat-release').success?
+        # Fedora also has an /etc/redhat-release so the Fedora check must
+        # come before the RedHat check
+        if run_command('ls /etc/fedora-release').success?
+          line = run_command('cat /etc/redhat-release').stdout
+          if line =~ /release (\d[\d]*)/
+            release = $1
+          end
+          { :family => 'Fedora', :release => release }
+        elsif run_command('ls /etc/redhat-release').success?
           line = run_command('cat /etc/redhat-release').stdout
           if line =~ /release (\d[\d.]*)/
             release = $1
           end
-          { :family => 'RedHat', :release => release }
+          if release =~ /7./
+            { :family => 'RedHat7', :release => release }
+          else
+            { :family => 'RedHat', :release => release }
+          end
         elsif run_command('ls /etc/system-release').success?
           { :family => 'RedHat', :release => nil } # Amazon Linux
         elsif run_command('ls /etc/SuSE-release').success?
@@ -196,19 +208,24 @@ module SpecInfra
           end
           { :family => 'SuSE', :release => release }
         elsif run_command('ls /etc/debian_version').success?
-          lsb_release = run_command("lsb_release -i")
+          lsb_release = run_command("lsb_release -ir")
           if lsb_release.success?
-            distro = $' if lsb_release.stdout =~ /:/
+            if lsb_release.stdout =~ /:/
+              distro = lsb_release.stdout.split("\n").first.split(':').last
+              release = lsb_release.stdout.split("\n").last.split(':').last.strip
+            end
           else
             lsb_release = run_command("cat /etc/lsb-release")
             if lsb_release.success?
               lsb_release.stdout.each_line do |line|
-                distro = $' if line =~ /^DISTRIB_ID=/
+                distro = line.split('=').last if line =~ /^DISTRIB_ID=/
+                release = line.split('=').last.strip if line =~ /^DISTRIB_RELEASE=/
               end
             end
           end
           distro ||= 'Debian'
-          { :family => distro.strip, :release => nil }
+          release ||= nil
+          { :family => distro.strip, :release => release }
         elsif run_command('ls /etc/gentoo-release').success?
           { :family => 'Gentoo', :release => nil }
         elsif run_command('ls /usr/lib/setup/Plamo-*').success?
@@ -233,6 +250,10 @@ module SpecInfra
           else
             { :family => 'FreeBSD', :release => nil }
           end
+        elsif run_command('uname -sr').stdout =~ /Arch/i
+          { :family => 'Arch', :release => nil }
+        elsif run_command('uname -s').stdout =~ /OpenBSD/i
+          { :family => 'OpenBSD', :release => nil }
         else
           { :family => 'Base', :release => nil }
         end

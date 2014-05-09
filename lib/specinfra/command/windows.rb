@@ -66,6 +66,10 @@ module SpecInfra
         end
       end
 
+      def get_file_content(file)
+        "[Io.File]::ReadAllText('#{file}')"
+      end
+
       def check_access_by_user(file, user, access)
         case access
         when 'r'
@@ -229,61 +233,84 @@ module SpecInfra
           using 'list_windows_features.ps1'
           exec cmd
         end
-       end
+      end
 
-       def check_file_version(name,version)
-          cmd = "((Get-Command '#{name}').FileVersionInfo.ProductVersion -eq '#{version}') -or ((Get-Command '#{name}').FileVersionInfo.FileVersion -eq '#{version}')"
-          Backend::PowerShell::Command.new { exec cmd }
-       end
+      def check_windows_hot_fix_installed(description, hot_fix_id=nil)
+        hot_fix_id_match = /(KB\d+)/i.match(description)
+        hot_fix_id = hot_fix_id_match ? hot_fix_id_match[1] : description if hot_fix_id.nil?
 
-       def check_iis_website_enabled(name)
-          Backend::PowerShell::Command.new do
-            using 'find_iis_component.ps1'
-            exec "(FindIISWebsite -name '#{name}').serverAutoStart -eq $true"
-          end
-       end
-
-       def check_iis_website_installed(name)
-          Backend::PowerShell::Command.new do
-            using 'find_iis_component.ps1'
-            exec "@(FindIISWebsite -name '#{name}').count -gt 0"
-          end
-       end
-
-       def check_iis_website_running(name)
-          Backend::PowerShell::Command.new do
-            using 'find_iis_component.ps1'
-            exec "(FindIISWebsite -name '#{name}').state -eq 'Started'"
-          end
-       end
-
-       def check_iis_website_app_pool(name, app_pool)
+        args = [ 
+          '-description', "'#{description}'",
+          '-hotFixId', "'#{hot_fix_id}'"
+        ]
+ 
+        cmd = "(FindInstalledHotFix #{args.join(' ')})" 
         Backend::PowerShell::Command.new do
-              using 'find_iis_component.ps1'
-              exec "(FindIISWebsite -name '#{name}').applicationPool -match '#{app_pool}'"
-            end
+          using 'find_installed_hot_fix.ps1'
+          exec "#{cmd} -eq $true"
         end
+      end
 
-        def check_iis_website_path(name, path)
-            Backend::PowerShell::Command.new do
-              using 'find_iis_component.ps1'
-              exec "[System.Environment]::ExpandEnvironmentVariables( ( FindIISWebsite -name '#{name}' ).physicalPath ).replace('\\', '/' ) -eq ('#{path}'.trimEnd('/').replace('\\', '/'))"
-            end
-        end
+      def check_file_version(name,version)
+        cmd = "((Get-Command '#{name}').FileVersionInfo.ProductVersion -eq '#{version}') -or ((Get-Command '#{name}').FileVersionInfo.FileVersion -eq '#{version}')"
+        Backend::PowerShell::Command.new { exec cmd }
+      end
 
-        def check_iis_app_pool(name)
-            Backend::PowerShell::Command.new do
-              using 'find_iis_component.ps1'
-              exec "@(FindIISAppPool -name '#{name}').count -gt 0"
-            end
+      def check_iis_website_enabled(name)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISWebsite -name '#{name}').serverAutoStart -eq $true"
         end
+      end
 
-        def check_iis_app_pool_dotnet(name, dotnet)
-            Backend::PowerShell::Command.new do
-              using 'find_iis_component.ps1'
-              exec "(FindIISAppPool -name '#{name}').managedRuntimeVersion -match 'v#{dotnet}'"
-            end
+      def check_iis_website_installed(name)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "@(FindIISWebsite -name '#{name}').count -gt 0"
         end
+      end
+
+      def check_iis_website_running(name)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISWebsite -name '#{name}').state -eq 'Started'"
+        end
+      end
+
+      def check_iis_website_app_pool(name, app_pool)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISWebsite -name '#{name}').applicationPool -match '#{app_pool}'"
+        end
+      end
+
+      def check_iis_website_path(name, path)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "[System.Environment]::ExpandEnvironmentVariables( ( FindIISWebsite -name '#{name}' ).physicalPath ).replace('\\', '/' ) -eq ('#{path}'.trimEnd('/').replace('\\', '/'))"
+        end
+      end
+
+      def check_iis_app_pool(name)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "@(FindIISAppPool -name '#{name}').count -gt 0"
+        end
+      end
+
+      def check_iis_app_pool_dotnet(name, dotnet)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISAppPool -name '#{name}').managedRuntimeVersion -match 'v#{dotnet}'"
+        end
+      end
+
+      def check_scheduled_task(name)
+        Backend::PowerShell::Command.new do
+          using 'find_scheduled_task.ps1'
+          exec "(FindScheduledTask -name '#{name}').TaskName -eq '\\#{name}'"
+        end
+      end
 
       private
 
