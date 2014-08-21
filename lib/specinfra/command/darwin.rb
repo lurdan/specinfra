@@ -1,6 +1,19 @@
 module SpecInfra
   module Command
     class Darwin < Base
+      def check_enabled(service, level=nil)
+        "launchctl list | grep #{escape(service)}"
+      end
+
+      def check_running(service)
+        "launchctl list | grep #{escape(service)} | grep -E '^[0-9]+'"
+      end
+
+      def check_listening(port)
+        regexp = ":#{port} "
+        "lsof -nP -iTCP -sTCP:LISTEN | grep -- #{escape(regexp)}"
+      end
+
       def check_file_md5checksum(file, expected)
         "openssl md5 #{escape(file)} | cut -d'=' -f2 | cut -c 2- | grep -E ^#{escape(expected)}$"
       end
@@ -44,6 +57,12 @@ module SpecInfra
           cmd = "/usr/local/bin/brew list -1 | grep -E '^#{escaped_package}$'"
         end
         cmd
+      end
+      alias :check_installed_by_homebrew :check_installed
+
+      def check_installed_by_pkgutil(package, version=nil)
+        cmd = "pkgutil --pkg-info #{package}"
+        cmd = "#{cmd} | grep '^version: #{escape(version)}'" if version
       end
 
       def install(package)

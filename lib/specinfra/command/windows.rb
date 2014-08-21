@@ -53,7 +53,7 @@ module SpecInfra
 
       def check_file_contain(file, pattern)
         Backend::PowerShell::Command.new do
-          exec "[Io.File]::ReadAllText('#{file}') -match '#{convert_regexp(pattern)}'"
+          exec %Q![[Io.File]::ReadAllText("#{file}") -match '#{convert_regexp(pattern)}'!
         end
       end
 
@@ -62,12 +62,12 @@ module SpecInfra
         to ||= '$'
         Backend::PowerShell::Command.new do
           using 'crop_text.ps1'
-          exec %Q[(CropText -text ([Io.File]::ReadAllText('#{file}')) -fromPattern '#{convert_regexp(from)}' -toPattern '#{convert_regexp(to)}') -match '#{pattern}']
+          exec %Q!(CropText -text ([Io.File]::ReadAllText("#{file}")) -fromPattern '#{convert_regexp(from)}' -toPattern '#{convert_regexp(to)}') -match '#{pattern}'!
         end
       end
 
       def get_file_content(file)
-        "[Io.File]::ReadAllText('#{file}')"
+        %Q![Io.File]::ReadAllText("#{file}")!
       end
 
       def check_access_by_user(file, user, access)
@@ -290,6 +290,27 @@ module SpecInfra
           exec "[System.Environment]::ExpandEnvironmentVariables( ( FindIISWebsite -name '#{name}' ).physicalPath ).replace('\\', '/' ) -eq ('#{path}'.trimEnd('/').replace('\\', '/'))"
         end
       end
+    
+      def check_iis_website_binding(name, port, protocol, ipAddress, hostHeader)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindSiteBindings -name '#{name}' -protocol '#{protocol}' -hostHeader '#{hostHeader}' -port #{port} -ipAddress '#{ipAddress}').count -gt 0"
+        end
+      end
+
+      def check_iis_website_virtual_dir(name, vdir, path)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindSiteVirtualDir -name '#{name}' -vdir '#{vdir}' -path '#{path}') -eq $true"
+        end
+      end
+
+      def check_iis_website_application(name, app, pool, physicalPath)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindSiteApplication -name '#{name}' -app '#{app}' -pool '#{pool}' -physicalPath '#{physicalPath}') -eq $true"
+        end
+      end
 
       def check_iis_app_pool(name)
         Backend::PowerShell::Command.new do
@@ -305,6 +326,55 @@ module SpecInfra
         end
       end
 
+      def check_32bit_enabled(name)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISAppPool -name '#{name}').enable32BitAppOnWin64 -eq $true"
+        end
+      end
+
+      def check_managed_pipeline_mode(name, mode)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISAppPool -name '#{name}').managedPipelineMode -eq '#{mode}'"
+        end
+      end
+
+      def check_idle_timeout(name, minutes)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISAppPool -name '#{name}').processModel.idleTimeout.Minutes -eq #{minutes}"
+        end
+      end
+
+      def check_identity_type(name, type)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISAppPool -name '#{name}').processModel.identityType -eq '#{type}'"
+        end
+      end
+
+      def check_user_profile(name)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISAppPool -name '#{name}').processModel.loadUserProfile -eq $true"
+        end
+      end
+
+      def check_username(name, username)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISAppPool -name '#{name}').processModel.username -eq '#{username}'"
+        end
+      end
+
+      def check_periodic_restart(name, minutes)
+        Backend::PowerShell::Command.new do
+          using 'find_iis_component.ps1'
+          exec "(FindIISAppPool -name '#{name}').recycling.periodicRestart.time.TotalMinutes -eq #{minutes}"
+        end
+      end
+
       def check_scheduled_task(name)
         Backend::PowerShell::Command.new do
           using 'find_scheduled_task.ps1'
@@ -315,7 +385,7 @@ module SpecInfra
       private
 
       def item_has_attribute item, attribute
-        "((Get-Item -Path '#{item}' -Force).attributes.ToString() -Split ', ') -contains '#{attribute}'"
+        %Q!((Get-Item -Path "#{item}" -Force).attributes.ToString() -Split ', ') -contains '#{attribute}'!
       end
 
       def convert_key_property_value property

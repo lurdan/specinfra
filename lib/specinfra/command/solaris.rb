@@ -28,7 +28,7 @@ module SpecInfra
       end
 
       def check_cron_entry(user, entry)
-        entry_escaped = entry.gsub(/\*/, '\\*')
+        entry_escaped = entry.gsub(/\*/, '\\*').gsub(/\[/, '\\[').gsub(/\]/, '\\]')
         if user.nil?
           "crontab -l | grep -- #{escape(entry_escaped)}"
         else
@@ -76,9 +76,10 @@ module SpecInfra
         from ||= '1'
         to ||= '$'
         sed = "sed -n #{escape(from)},#{escape(to)}p #{escape(file)}"
+        sed_end = "sed -n 1,#{escape(to)}p"
         checker_with_regexp = check_file_contain_with_regexp("/dev/stdin", expected_pattern)
         checker_with_fixed  = check_file_contain_with_fixed_strings("/dev/stdin", expected_pattern)
-        "#{sed} | #{checker_with_regexp} || #{sed} | #{checker_with_fixed}"
+        "#{sed} | #{sed_end} | #{checker_with_regexp}|| #{sed} | #{sed_end} | #{checker_with_fixed}"
       end
 
       def check_belonging_group(user, group)

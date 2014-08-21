@@ -59,6 +59,14 @@ module SpecInfra
         "test -f #{escape(file)}"
       end
 
+      def get_file_mtime(file)
+        "stat -c %Y #{escape(file)}"
+      end
+
+      def get_file_size(file)
+        "stat -c %s #{escape(file)}"
+      end
+
       def check_socket(file)
         "test -S #{escape(file)}"
       end
@@ -72,7 +80,7 @@ module SpecInfra
       end
 
       def check_group(group)
-        "getent group | grep -wq -- #{escape(group)}"
+        "getent group #{escape(group)}"
       end
 
       def check_installed(package, version=nil)
@@ -121,6 +129,10 @@ module SpecInfra
         "ps aux | grep -w -- #{escape(process)} | grep -qv grep"
       end
 
+      def check_process_count(process, count)
+        "test $(ps aux | grep -w -- #{escape(process)} | grep -v grep | wc -l) -eq #{escape(count)}"
+      end
+
       def get_process(process, opts)
         "ps -C #{escape(process)} -o #{opts[:format]} | head -1"
       end
@@ -130,11 +142,11 @@ module SpecInfra
       end
 
       def check_file_contain_with_regexp(file, expected_pattern)
-        "grep -q -- #{escape(expected_pattern)} #{escape(file)}"
+        "grep -qs -- #{escape(expected_pattern)} #{escape(file)}"
       end
 
       def check_file_contain_with_fixed_strings(file, expected_pattern)
-        "grep -qF -- #{escape(expected_pattern)} #{escape(file)}"
+        "grep -qFs -- #{escape(expected_pattern)} #{escape(file)}"
       end
 
       def check_file_checksum(file, expected)
@@ -156,9 +168,10 @@ module SpecInfra
         from ||= '1'
         to ||= '$'
         sed = "sed -n #{escape(from)},#{escape(to)}p #{escape(file)}"
+        sed_end = "sed -n 1,#{escape(to)}p"
         checker_with_regexp = check_file_contain_with_regexp("-", expected_pattern)
         checker_with_fixed  = check_file_contain_with_fixed_strings("-", expected_pattern)
-        "#{sed} | #{checker_with_regexp} || #{sed} | #{checker_with_fixed}"
+        "#{sed} | #{sed_end} | #{checker_with_regexp} || #{sed} | #{sed_end} | #{checker_with_fixed}"
       end
 
       def check_file_contain_lines(file, expected_lines, from=nil, to=nil)
@@ -188,7 +201,7 @@ module SpecInfra
       end
 
       def check_cron_entry(user, entry)
-        entry_escaped = entry.gsub(/\*/, '\\*')
+        entry_escaped = entry.gsub(/\*/, '\\*').gsub(/\[/, '\\[').gsub(/\]/, '\\]')
         if user.nil?
           "crontab -l | grep -v \"#\" -- | grep -- #{escape(entry_escaped)}"
         else
@@ -243,6 +256,10 @@ module SpecInfra
 
       def check_belonging_group(user, group)
         "id #{escape(user)} | awk '{print $3}' | grep -- #{escape(group)}"
+      end
+
+      def check_primary_group(group)
+        raise NotImplementedError.new
       end
 
       def check_gid(group, gid)
@@ -326,6 +343,10 @@ module SpecInfra
       end
 
       def check_cotainer_running(container)
+        raise NotImplementedError.new
+      end
+
+      def check_immutable(file)
         raise NotImplementedError.new
       end
 
